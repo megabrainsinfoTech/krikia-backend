@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev:client-s": "pnpm --filter client-service start:dev"
+    "dev:client-s": "pnpm --filter client-service start:dev",
+    "dev:krikia-email": "pnpm --filter @krikia/email dev"
   },
   "keywords": [],
   "author": "",

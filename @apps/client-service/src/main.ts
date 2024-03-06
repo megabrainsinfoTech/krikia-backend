@@ -1,11 +1,10 @@
+import * as dotenv from 'dotenv';
+dotenv.config(); // Load environment variables from .env file
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import * as cookieParser from 'cookie-parser';
 
-import * as dotenv from 'dotenv';
-import * as cookieParser from "cookie-parser"
-
-void async function () {
-  dotenv.config(); // Load environment variables from .env file
+void (async function () {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
     origin: ['http://localhost:3040', 'http://localhost:3050'], // Allow requests from this origin
@@ -16,6 +15,4 @@ void async function () {
   });
   app.use(cookieParser(process.env.COOKIE_SECRET));
   await app.listen(8001);
-  
-}();
-
+})();
