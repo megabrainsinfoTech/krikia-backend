@@ -1,0 +1,1 @@
+export type BusinessAccountStatus = 'Active' | 'Suspended' | 'Inactive' | 'Banned';

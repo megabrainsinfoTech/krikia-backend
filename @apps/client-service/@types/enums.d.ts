@@ -1,0 +1,1 @@
+type PaymentFrequency = "Weekly"|"Monthly"
