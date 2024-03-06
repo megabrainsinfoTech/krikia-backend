@@ -1,46 +1,59 @@
 // One Time Token (OTT)
-import redisClient from "./redisClient"
-import Email from "./email"
-import AppError from "./errorHandle"
-import { HttpStatus } from "@nestjs/common"
+import redisClient from './redisClient';
+import Email from './email';
+import AppError from './errorHandle';
+import { HttpStatus } from '@nestjs/common';
 
-export const storeOTT = async (key: any, value: any, exp: number)=> {
-   (await redisClient).SETEX(key, exp, value);
-   
-   // After saving into redis store, send to email if in production
-   if (process.env.NODE_ENV === "production") {
-      const emailUrl = `${process.env.CUSTOMER_FRONTEND_URL}/auth/verify-email/${key}`;
-      const emailer = new Email({ email: value }, `${process.env.EMAIL_USERNAME}`, emailUrl, {});
+export const storeOTT = async (key: any, value: any, exp: number) => {
+  (await redisClient).SETEX(key, exp, value);
 
-      await emailer.sendVerifyEmail();
+  // After saving into redis store, send to email if in production
+  const emailUrl = `${process.env.CUSTOMER_FRONTEND_URL}/auth/verify-email/${key}`;
 
-      if (!emailer) {
-         throw new AppError(`Network error. Check your network connection and try again.`, HttpStatus.INTERNAL_SERVER_ERROR)
-      }
-   }
-}
+  console.log(emailUrl);
+  if (process.env.NODE_ENV === 'production') {
+    const emailUrl = `${process.env.CUSTOMER_FRONTEND_URL}/auth/verify-email/${key}`;
 
-export const verifyOTT = async (key: any)=> {
-   return (await redisClient).GET(key);
-}
+    const emailer = new Email(
+      { email: value },
+      `${process.env.EMAIL_USERNAME}`,
+      emailUrl,
+      {},
+    );
 
-export const removeOTT = async (key: any)=> {
-    (await redisClient).DEL(key)
-}
+    await emailer.sendVerifyEmail();
 
-export const verifyCreateListingProgressToken = async (key: string)=> {
-   const storage = await (await redisClient).GET(key);
-   if(storage){
+    if (!emailer) {
+      throw new AppError(
+        `Network error. Check your network connection and try again.`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+};
 
-      const [listingId, pageIdx] = storage.split(":") //First index is the listingId
-      return { listingId, pageIdx };
-   }
+export const verifyOTT = async (key: any) => {
+  return (await redisClient).GET(key);
+};
 
-   return { listingId: null, pageIdx: null }
-   
-}
+export const removeOTT = async (key: any) => {
+  (await redisClient).DEL(key);
+};
 
-export const updateCreateListingProgressStep = async (key: string, value: string)=> {
-   const exp = 1000000;
-   (await redisClient).SETEX(key, exp, value);
-}
+export const verifyCreateListingProgressToken = async (key: string) => {
+  const storage = await (await redisClient).GET(key);
+  if (storage) {
+    const [listingId, pageIdx] = storage.split(':'); //First index is the listingId
+    return { listingId, pageIdx };
+  }
+
+  return { listingId: null, pageIdx: null };
+};
+
+export const updateCreateListingProgressStep = async (
+  key: string,
+  value: string,
+) => {
+  const exp = 1000000;
+  (await redisClient).SETEX(key, exp, value);
+};

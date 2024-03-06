@@ -1,10 +1,10 @@
 {
-  "name": "krikia-backend",
+  "name": "email",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev:client-s": "pnpm --filter client-service start:dev"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
