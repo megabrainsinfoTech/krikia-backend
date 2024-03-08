@@ -1,0 +1,15 @@
+{
+  "extends": "@krikia/tsconfig/base.json",
+  "display": "Email Library",
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "lib": ["es5", "es6"],
+    "module": "ESNext",
+    "target": "es6",
+    "noEmit": true,
+    "emitDecoratorMetadata": false,
+    "experimentalDecorators": true
+  },
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"]
+}

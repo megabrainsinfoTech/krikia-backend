@@ -1,12 +1,38 @@
 {
-  "name": "email",
+  "name": "@krikia/email",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts  --format esm,cjs --dts",
+    "clean": "rm -rf dist",
+    "dev": "tsup src/index.ts  --format esm,cjs --watch --dts ",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.10",
+    "@getbrevo/brevo": "2.0.0-beta.4",
+    "pug": "^3.0.2",
+    "nodemailer": "^6.9.7",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^6.4.14",
+    "@krikia/tsconfig": "workspace:*",
+    "tsup": "^7.2.0",
+    "typescript": "^5.2.2",
+    "@types/pug": "^2.0.10"
+  }
 }

@@ -4,9 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev:client-s": "pnpm --filter client-service start:dev"
+    "dev:client-s": "pnpm --filter client-service start:dev",
+    "build:client-s": "pnpm --filter client-service build",
+    "dev:krikia-email": "pnpm --filter @krikia/email dev",
+    "build:krikia-email": "pnpm --filter @krikia/email build",
+    "deploy:build": "pnpm run build:krikia-email && pnpm run build:client-s"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nx": "^18.0.7"
+  }
 }

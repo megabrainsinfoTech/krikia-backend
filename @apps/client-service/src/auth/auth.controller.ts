@@ -33,7 +33,7 @@ export class AuthController {
   @Get('verify-email/:token')
   async verifyEmail(@Param('token') token: string) {
     const email = await this.authService.verifyEmail(token);
-    return `Email ${email} verified successfully`;
+    return { message: `Email ${email} verified successfully` };
   }
 
   @Post('login')

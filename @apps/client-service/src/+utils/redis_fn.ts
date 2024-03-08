@@ -1,35 +1,30 @@
 // One Time Token (OTT)
 import redisClient from './redisClient';
-import Email from './email';
+import { WelcomeNotification } from './email';
 import AppError from './errorHandle';
 import { HttpStatus } from '@nestjs/common';
 
 export const storeOTT = async (key: any, value: any, exp: number) => {
-  (await redisClient).SETEX(key, exp, value);
+  const emailUrl = `${process.env.CUSTOMER_FRONTEND_URL}/verify-email/${key}`;
 
-  // After saving into redis store, send to email if in production
-  const emailUrl = `${process.env.CUSTOMER_FRONTEND_URL}/auth/verify-email/${key}`;
+  // if (process.env.NODE_ENV === 'production') {
+  const emailer = await WelcomeNotification.sendWelcomeToKrikiaCustomer({
+    params: {
+      subject:
+        'Welcome to Krikia, Verify Your Email: Take the Next Step in Securing Your Account',
+      verifyUrl: emailUrl,
+    },
+    to: { email: value, name: 'Customer' },
+  });
 
-  console.log(emailUrl);
-  if (process.env.NODE_ENV === 'production') {
-    const emailUrl = `${process.env.CUSTOMER_FRONTEND_URL}/auth/verify-email/${key}`;
-
-    const emailer = new Email(
-      { email: value },
-      `${process.env.EMAIL_USERNAME}`,
-      emailUrl,
-      {},
+  if (emailer) {
+    throw new AppError(
+      `Network error. Check your network connection and try again.`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
     );
-
-    await emailer.sendVerifyEmail();
-
-    if (!emailer) {
-      throw new AppError(
-        `Network error. Check your network connection and try again.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
   }
+  // saving into redis store, after sending email if in production
+  (await redisClient).SETEX(key, exp, value);
 };
 
 export const verifyOTT = async (key: any) => {

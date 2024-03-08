@@ -13,8 +13,8 @@ const __dirname = dirname(__filename);
 dotenv.config();
 
 // Middlewares
-app.use(express.json({ limit: "100mb" }));
-app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(helmet());
 // app.options(cors());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
@@ -33,7 +33,6 @@ if (process.env.NODE_ENV === "development") {
   whitelist.push(`http://localhost:3001`);
   whitelist.push(`http://localhost:3040`);
   whitelist.push(`http://localhost:8001`);
-
 }
 
 // Define the CORS options delegate
