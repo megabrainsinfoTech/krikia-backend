@@ -1,1 +1,1 @@
-declare module "@krikia/email" {}
+export declare module "@krikia/email" {}

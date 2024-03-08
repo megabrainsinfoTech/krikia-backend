@@ -33,7 +33,6 @@ const ConnectObj = {
   database: process.env.DB_NAME as string,
   password: process.env.DB_PASS as string,
 };
-console.log(ConnectObj);
 
 export const databaseConfig: SequelizeModuleAsyncOptions = {
   useFactory: async () => {

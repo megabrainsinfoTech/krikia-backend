@@ -36,7 +36,6 @@ export class AuthService {
     // Create and send email confirmation token to redis datastore
 
     const token = v4();
-
     await storeOTT(token, signupBody.email, 60 * 60 * 24 * 2); //Store One Time Token for two days. ms returns milliseconds so divide by 1000 to get seconds
 
     return {

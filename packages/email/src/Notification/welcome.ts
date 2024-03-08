@@ -10,12 +10,12 @@ export class WelcomeNotificationSender extends EmailSender {
     option: singleMail
   ): Promise<emailErrorMessage | null> {
     // TemplateId For sendWelcomeToKrikiaCustomer
-    return this.sendEmail({ ...option, to: [option.to], templateId: 2 });
+    return await this.sendEmail({ ...option, to: [option.to], templateId: 1 });
   }
 
   public async sendWelcomeToKrikiaBusiness(
     option: SibApiV3Sdk.SendSmtpEmail
   ): Promise<emailErrorMessage | null> {
-    return this.sendEmail({});
+    return await this.sendEmail({});
   }
 }
