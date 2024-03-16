@@ -4,10 +4,17 @@ import { AuthService } from './auth.service';
 import { UserModule } from '../user/user.module';
 import { BusinessModule } from '../business/business.module';
 import { UserBusinessModule } from '../user-business/user-business.module';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { RefreshToken } from './auth.model';
 
 @Module({
-  imports: [UserModule, BusinessModule, UserBusinessModule],
+  imports: [
+    SequelizeModule.forFeature([RefreshToken]),
+    UserModule,
+    BusinessModule,
+    UserBusinessModule,
+  ],
   controllers: [AuthController],
-  providers: [AuthService]
+  providers: [AuthService],
 })
 export class AuthModule {}

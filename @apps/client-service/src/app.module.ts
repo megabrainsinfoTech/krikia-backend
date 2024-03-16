@@ -19,23 +19,52 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { databaseConfig } from './database/database.config';
 import { GlobalModule } from './global/global.module';
 import { WishlistModule } from './wishlist/wishlist.module';
-import { GlobalMiddleware } from './+common/global.middleware';
+
 import { ImageModule } from './image/image.module';
 import { PromoCodeModule } from './promo-code/promo-code.module';
 import { LibMetaModule } from './lib-meta/lib-meta.module';
 import { ListingMetaModule } from './listing-meta/listing-meta.module';
+import { RemoveKeysInterceptorProvider } from './+common/providers/removeKeyInterceptorProvider';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { RemoveKeysInterceptor } from './+common/interceptors/RemoveKeysInterceptor';
+import { GlobalMiddleware } from './+common/middlewares/global.middleware';
 
 @Module({
   imports: [
     SequelizeModule.forRootAsync(databaseConfig),
-    UserModule, ListingModule, BusinessModule, AuthModule, ListingPlanModule, ListingPlanOptionModule, PurchaseModule, ReviewModule, ReviewReplyModule, SharedWishlistModule, SiteInspectionModule, NextOfKinModule, UserBusinessModule, CustomerModule, WishlistModule, GlobalModule, ImageModule, PromoCodeModule, LibMetaModule, ListingMetaModule
+    UserModule,
+    ListingModule,
+    BusinessModule,
+    AuthModule,
+    ListingPlanModule,
+    ListingPlanOptionModule,
+    PurchaseModule,
+    ReviewModule,
+    ReviewReplyModule,
+    SharedWishlistModule,
+    SiteInspectionModule,
+    NextOfKinModule,
+    UserBusinessModule,
+    CustomerModule,
+    WishlistModule,
+    GlobalModule,
+    ImageModule,
+    PromoCodeModule,
+    LibMetaModule,
+    ListingMetaModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    RemoveKeysInterceptorProvider,
+    {
+      provide: APP_INTERCEPTOR,
+      useExisting: RemoveKeysInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(GlobalMiddleware)
-    .forRoutes("listing", "auth/create-business")
+    consumer.apply(GlobalMiddleware).forRoutes('*');
   }
 }

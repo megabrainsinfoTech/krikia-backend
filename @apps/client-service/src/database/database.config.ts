@@ -25,6 +25,7 @@ import { ListingAmenity } from '../listing/listing-amenity.model';
 import { ListingLocation } from '../listing/listing-location.model';
 import { ListingPlanDimension } from '../listing-plan/listing-plan-dim.model';
 import { House } from '../listing-meta/house.model';
+import { RefreshToken } from 'src/auth/auth.model';
 
 const ConnectObj = {
   host: (process.env.DB_HOST as string) || undefined,
@@ -71,6 +72,7 @@ export const databaseConfig: SequelizeModuleAsyncOptions = {
       ListingImage,
       BusinessImage,
       PromoCode,
+      RefreshToken,
     ]);
     await sequelize.sync();
     return sequelize.options;

@@ -3,6 +3,7 @@ dotenv.config(); // Load environment variables from .env file
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
+import { AuthDeserialize } from './auth/auth-deserialize.middleware';
 
 void (async function () {
   const app = await NestFactory.create(AppModule);

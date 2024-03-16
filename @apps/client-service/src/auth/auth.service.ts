@@ -1,17 +1,29 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { LoginAuthDTO } from './auth.dto';
+import { LoginAuthDTO, VerifyEmailToken } from './auth.dto';
 import { signAccessToken, signRefreshToken } from '../+utils/jwt_token';
-import { encodeBase64Url } from '../+utils';
+import { encodeBase64Url, generateRandom6Digits } from '../+utils';
 import { UserService } from '../user/user.service';
-import { removeOTT, storeOTT, verifyOTT } from '../+utils/redis_fn';
+import {
+  getRedisData,
+  removeOTT,
+  setRedisData,
+  storeOTT,
+  verifyOTT,
+} from '../+utils/redis_fn';
 import { ILoginPayload } from './auth.interface';
-import { v4 } from 'uuid';
-
-import { CreateUserDTO } from '../user/user.dto';
+import {
+  CreateNewUserPassword,
+  CreateUserDTO,
+  createEmailDTO,
+} from '../user/user.dto';
 import { CreateBusinessDTO } from '../business/business.dto';
 import { BusinessService } from '../business/business.service';
 import { UserBusinessService } from '../user-business/user-business.service';
 import apiConnect from 'src/+utils/api-connect';
+import AppError from 'src/+utils/errorHandle';
+import { GenerateCryptoHash } from 'src/+utils/helper/hashGen';
+import { InjectModel } from '@nestjs/sequelize';
+import { RefreshToken } from './auth.model';
 
 @Injectable()
 export class AuthService {
@@ -19,9 +31,11 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly businessService: BusinessService,
     private readonly userBusinessService: UserBusinessService,
+    @InjectModel(RefreshToken)
+    private readonly refreshToken: typeof RefreshToken,
   ) {}
 
-  async signup(signupBody: CreateUserDTO) {
+  async signup(signupBody: createEmailDTO) {
     const doesExist = await this.userService.findByEmail(signupBody.email);
     if (!!doesExist) {
       throw new HttpException(
@@ -30,52 +44,130 @@ export class AuthService {
       );
     }
 
-    // Create user
-    await this.userService.create(signupBody);
-
     // Create and send email confirmation token to redis datastore
 
-    const token = v4();
-    await storeOTT(token, signupBody.email, 60 * 60 * 24 * 2); //Store One Time Token for two days. ms returns milliseconds so divide by 1000 to get seconds
+    const token = generateRandom6Digits() as unknown as string;
 
+    const temporaryToken = GenerateCryptoHash();
+
+    await storeOTT(signupBody.email, token, 60 * 60 * 24 * 3); //Store One Time Token for 3 days. ms returns milliseconds so divide by 1000 to get seconds
+    await setRedisData(temporaryToken, signupBody.email, 60 * 60 * 24 * 3); // Temp Holder for the email
     return {
       message: `Account created successfully. Verify your email and login`,
+      temporaryToken,
     };
   }
 
-  async verifyEmail(token: string) {
-    try {
-      const email = await verifyOTT(token);
+  async verifyEmail(token: VerifyEmailToken) {
+    const isValidToken = await verifyOTT(token.user_token_id, token.token);
 
-      if (!!email) {
-        const user = await this.userService.findByEmail(email);
-
-        if (!!user) {
-          await removeOTT(token);
-
-          // Update user status in DB to active
-          user.set({
-            status: 'Active',
-            avatarUrl: `${process.env.CDN_URL}/krikia-assets/default_avatar.png`,
-          });
-          user.save();
-
-          return email;
-        } else {
-          throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-        }
-      } else {
-        throw new HttpException(
-          'Invalid or expired token',
-          HttpStatus.FORBIDDEN,
-        );
-      }
-    } catch (err: any) {
-      throw new HttpException(err.message, err.statusCode);
+    if (!!isValidToken) {
+      throw new AppError('Invalid Confirmation Code', HttpStatus.UNAUTHORIZED);
     }
-  }
 
-  async login(loginBody: LoginAuthDTO): Promise<ILoginPayload> {
+    // get user email from Redis DB
+    const email = await getRedisData(token.user_token_id);
+
+    // Email return null if not present in the database
+    const user = await this.userService.findByEmail(email);
+    if (user) {
+      throw new AppError(
+        'Sorry we cannot proceed with the email Verification',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const createPassHash = GenerateCryptoHash();
+
+    if (!createPassHash) {
+      throw new AppError(
+        'Something went wrong!!. Its not your facult',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    // Remove the Email from Redis
+    await removeOTT(token.user_token_id);
+
+    // Token to recognize email
+    await setRedisData(createPassHash, email, 60 * 60 * 1);
+    return {
+      message: 'Email verified successfully, Continue to create Password',
+      token: createPassHash,
+    };
+  }
+  private async loginTokenAction(userId: string, userAgent: string) {
+    // Sign refresh token
+    const refreshToken = await signRefreshToken(userId);
+    // Sign access token
+    const accessToken = await signAccessToken(userId);
+
+    if (!refreshToken || !accessToken) {
+      throw new AppError(
+        'Sorry, Something went wrong. its not your fault',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    // This Line Stores the  Refresh Token to the Database
+    const hashrefreshToken = GenerateCryptoHash(`${refreshToken}`);
+    const newrefreshToken = await this.refreshToken.create({
+      token: hashrefreshToken as string,
+      userId,
+      userAgent,
+    });
+
+    if (!newrefreshToken) {
+      throw new AppError(
+        "You can't login at moment. Please contact the krikia team if the issues persist",
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    return { refreshToken, accessToken };
+  }
+  async createPasswordNewUser(CPNU: CreateNewUserPassword) {
+    const userEmail = await getRedisData(CPNU.token);
+    if (!userEmail) {
+      throw new AppError(
+        'Sorry, we cannot proceed with this request, try signing up again',
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    // Email return null if not present in the database
+    const user = await this.userService.findByEmail(userEmail);
+    if (user) {
+      throw new AppError(
+        'Email Address is verified already',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const createUser = await this.userService.create({
+      ...CPNU,
+      email: userEmail,
+    });
+    if (!createUser) {
+      throw new AppError(
+        'Unable to create account',
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    // Sign refresh token
+    const refreshToken = await signRefreshToken(createUser.id);
+    // Sign access token
+    const accessToken = await signAccessToken(createUser.id);
+
+    // this.refreshToken.create({});
+
+    return {
+      userId: createUser.id,
+      accessToken,
+      message: 'Password created Successfully. Continue to complete profile',
+    };
+  }
+  async login(loginBody: LoginAuthDTO, userAgent: string) {
     const user = await this.userService.findByEmail(loginBody.email);
 
     if (!user) {
@@ -102,14 +194,12 @@ export class AuthService {
     }
 
     // Sign refresh token
-    const secretKey = await signRefreshToken(user.id);
-    // Sign access token
-    const accessToken = await signAccessToken(user.id, secretKey as string);
+    const Tokens = await this.loginTokenAction(user.id, userAgent);
 
     return {
-      __uAud: encodeBase64Url(`${user.id},${user.email}`),
       userId: user.id,
-      __ASSEMBLYsxvscz090619_: accessToken as string,
+      accessToken: Tokens.accessToken,
+      refreshToken: Tokens.refreshToken,
     };
   }
 
