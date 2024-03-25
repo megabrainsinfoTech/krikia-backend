@@ -1,15 +1,26 @@
-import { Table, Column, Model, DataType, PrimaryKey, HasMany, BeforeCreate, BeforeUpdate } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  PrimaryKey,
+  HasMany,
+  BeforeCreate,
+  BeforeUpdate,
+} from 'sequelize-typescript';
 import { UserAccountStatus } from './user.interface';
-import * as bcrypt from "bcryptjs"
+import * as bcrypt from 'bcryptjs';
 import { v4 } from 'uuid';
 import { Customer } from '../customer/customer.model';
 import { UserBusiness } from '../user-business/user-business.model';
 import { Purchase } from 'src/purchase/purchase.model';
-import { genUUID } from 'src/+utils/common';
+import { RefreshToken } from 'src/auth/auth.model';
+import { Exclude } from 'class-transformer';
+import { CompleteUserProfileDTO } from './user.dto';
 
 @Table
 export class User extends Model {
-  @Column({defaultValue: 0, primaryKey: true})
+  @Column({ defaultValue: v4(), primaryKey: true, type: DataType.UUID })
   id: string;
 
   @Column
@@ -21,14 +32,15 @@ export class User extends Model {
   @Column
   lastName: string;
 
+  @Exclude({ toPlainOnly: true })
   @Column
   password: string;
 
   @Column
-  dateOBirth: Date;
+  dateOfBirth: Date;
 
   @Column
-  gender: "Male" | "Female";
+  gender: 'Male' | 'Female';
 
   @Column
   phone: string;
@@ -46,16 +58,20 @@ export class User extends Model {
   fnxAccountAddress: string;
 
   @Column
-  status: UserAccountStatus;
+  public status: UserAccountStatus;
 
-  @HasMany(()=> Customer)
+  @HasMany(() => Customer)
   customers: Customer[];
 
-  @HasMany(()=> UserBusiness)
+  @HasMany(() => UserBusiness)
   businesses: UserBusiness[];
 
-  @HasMany(()=> Purchase)
+  @HasMany(() => Purchase)
   purchases: Purchase[];
+
+  // User has Many refresh token
+  @HasMany(() => RefreshToken, { onDelete: 'CASCADE' })
+  refreshTokens: RefreshToken[];
 
   // @HasOne(()=> NextOfKin)
   // kin: NextOfKin;
@@ -69,12 +85,11 @@ export class User extends Model {
     return await bcrypt.compare(inPassword, this.password);
   }
 
-//   Lifecycle methods
+  //   Lifecycle methods
   @BeforeCreate
   static async beforeUserCreate(user: any) {
     const hashedPassword = await bcrypt.hash(user.password, 12);
     user.password = hashedPassword;
-    user.id = genUUID();
   }
 
   @BeforeUpdate
@@ -82,5 +97,17 @@ export class User extends Model {
     user.id = Object.freeze(user.id);
   }
 
-
+  @BeforeUpdate
+  static async verifyUserStatus(user: CompleteUserProfileDTO & User) {
+    const fields =
+      user.email &&
+      user.firstName &&
+      user.gender &&
+      user.phone &&
+      user.lastName &&
+      user.dateOfBirth;
+    if (!fields) {
+      user.status = 'Incomplete';
+    }
+  }
 }

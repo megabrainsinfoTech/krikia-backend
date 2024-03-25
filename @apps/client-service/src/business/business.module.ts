@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule, forwardRef } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  forwardRef,
+} from '@nestjs/common';
 import { BusinessController } from './business.controller';
 import { BusinessService } from './business.service';
 import { UserAuthMiddleware } from '../+common/user-auth/user-auth.middleware';
@@ -14,7 +19,12 @@ import { ImageModule } from '../image/image.module';
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([Business]), forwardRef(()=> ListingModule), ImageModule,SiteInspectionModule, UserBusinessModule, CustomerModule,
+    SequelizeModule.forFeature([Business]),
+    forwardRef(() => ListingModule),
+    ImageModule,
+    SiteInspectionModule,
+    UserBusinessModule,
+    CustomerModule,
     ClsModule.forRoot({
       middleware: {
         // automatically mount the
@@ -30,11 +40,12 @@ import { ImageModule } from '../image/image.module';
   ],
   controllers: [BusinessController],
   providers: [BusinessService],
-  exports: [BusinessService]
+  exports: [BusinessService],
 })
 export class BusinessModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(UserAuthMiddleware, BusinessAuthMiddleware)
-    .forRoutes("business/:businessId")
+    consumer
+      .apply(UserAuthMiddleware, BusinessAuthMiddleware)
+      .forRoutes('business/:businessId');
   }
 }

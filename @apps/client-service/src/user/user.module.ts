@@ -18,7 +18,17 @@ import { ListingPlanOptionModule } from '../listing-plan-option/listing-plan-opt
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([User]), NextOfKinModule, PurchaseModule, ReviewModule, SiteInspectionModule, BusinessModule, UserBusinessModule,  WishlistModule, ListingModule, ListingPlanOptionModule, SharedWishlistModule,
+    SequelizeModule.forFeature([User]),
+    NextOfKinModule,
+    PurchaseModule,
+    ReviewModule,
+    SiteInspectionModule,
+    BusinessModule,
+    UserBusinessModule,
+    WishlistModule,
+    ListingModule,
+    ListingPlanOptionModule,
+    SharedWishlistModule,
     ClsModule.forRoot({
       middleware: {
         // automatically mount the
@@ -35,11 +45,10 @@ import { ListingPlanOptionModule } from '../listing-plan-option/listing-plan-opt
   ],
   providers: [UserService],
   controllers: [UserController],
-  exports: [UserService]
+  exports: [UserService],
 })
 export class UserModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(UserAuthMiddleware)
-    .forRoutes("user")
+    consumer.apply(UserAuthMiddleware).exclude('/user').forRoutes('user/*');
   }
 }

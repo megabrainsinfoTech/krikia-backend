@@ -1,124 +1,126 @@
-import { JwtPayload, SignOptions, sign, verify } from "jsonwebtoken";
-import { decodeBase64Url, encodeBase64Url } from ".";
-import redisClient from "./redisClient";
+import { JwtPayload, SignOptions, sign, verify } from 'jsonwebtoken';
+import { decodeBase64Url, encodeBase64Url } from '.';
+import redisClient from './redisClient';
 
-import errors from "http-errors"
-import { HttpException, HttpStatus } from "@nestjs/common";
+import { HttpException, HttpStatus } from '@nestjs/common';
+import AppError from './errorHandle';
 
-export const signAccessToken = (userId: string, secretKey: string)=> {
-    return new Promise<string|undefined>((resolve, reject)=> {
-        const payload: JwtPayload = {
-            aud: userId
-        };
-        const options: SignOptions = {
-            issuer: "krikia.com",
-            expiresIn: "1h"
-        };
+function generateToken(
+  payload: JwtPayload,
+  secretPass: string,
+  expiresIn: string = '5m',
+) {
+  const payloads: JwtPayload = {
+    aud: 'api.krikia.com',
+  };
+  const options: SignOptions = {
+    issuer: 'krikia.com',
+    expiresIn,
+  };
 
-    return sign(payload, secretKey, options, (err, token) => {
-            if(err) return reject(err);
-            resolve(encodeBase64Url(encodeBase64Url(token as string)));
-        });
-    })
+  return new Promise((resolve, reject) => {
+    sign({ ...payload, ...payloads }, secretPass, options, (err, token) => {
+      if (err) return reject(err);
+      resolve(token as string);
+    });
+  });
 }
 
-export const signRefreshToken = (userId: string)=> {
-
-    return new Promise<string|undefined>((resolve, reject)=> {
-        const payload: JwtPayload = {
-            aud: userId
-        };
-        const options: SignOptions = {
-            issuer: "krikia.com",
-            expiresIn: "1y"
-        };
-
-        return sign(payload, process.env.SERVICE_JWT_REFRESH_TOKEN_SECRET as string, options, (err, token) => {
-            if(err) return reject(err);
-            const hiddenToken = encodeBase64Url(encodeBase64Url(token as string))
-            redisClient.then(redis => {
-
-                const [key, exp, value] = [userId as any, 60*60*24*7*52, hiddenToken as any]
-
-                redis.SETEX(key, exp, value).then((status: any)=> {
-                   resolve(hiddenToken);
-                }).catch((err: any) => {
-                    return reject(errors.InternalServerError())
-                })
-
-            })
-            
-        });
-    })
+function verifyToken(token: string, jwtSecretKey: string) {
+  return new Promise<JwtPayload>((resolve, reject) => {
+    verify(token, jwtSecretKey, (err, decodedToken: JwtPayload) => {
+      if (err) {
+        if (err.name === 'TokenExpiredError') {
+          return resolve({
+            payload: null,
+            expired: false,
+            iat: 0,
+            exp: 0,
+            aud: '',
+            sub: '',
+          });
+        }
+        if (!decodedToken.iss?.endsWith('krikia.com')) {
+          return reject(
+            new AppError('Unrecognised Token', HttpStatus.FORBIDDEN),
+          );
+        }
+        reject(err);
+      } else {
+        resolve(decodedToken as JwtPayload);
+      }
+    });
+  });
 }
 
-export const verifyRefreshToken = (userId: string)=> {
-    return new Promise((resolve, reject)=> {
-        // Check if refresh token exist in redis datastore
-        if(!userId) return reject(new HttpException("Access denied", HttpStatus.UNAUTHORIZED))
-        redisClient.then(redis => {
-            redis.GET(userId as any).then((value: any) => {
-                if(!!value) {
-                    verify(decodeBase64Url(decodeBase64Url(value)), process.env.SERVICE_JWT_REFRESH_TOKEN_SECRET as string, (err, payload)=> {
-                        if(err) {
-                            return reject(err)
-                        }
-                        // const userId = (payload as JwtPayload).aud;
-                        return resolve(value); //If token passes verification, sent it back to be used as secret_key for accessToken
-                    })
-                } else {
-                    reject(new HttpException("Access denied", HttpStatus.UNAUTHORIZED));
-                }
-               
-            })
-        })
-    })
-}
+export const signAccessToken = async (userId: string) => {
+  return await generateToken(
+    { sub: userId },
+    process.env.SERVICE_JWT_ACCESS_TOKEN_SECRET as string,
+    '1m',
+  );
+};
 
-export const verifyRefreshTokenGlobal = (userId: string)=> {
-    return new Promise((resolve, reject)=> {
-        // Check if refresh token exist in redis datastore
-        if(!userId) return reject(new HttpException("Access denied", HttpStatus.UNAUTHORIZED))
-        redisClient.then(redis => {
-            redis.GET(userId as any).then((value: any) => {
-                if(!!value) {
-                    verify(decodeBase64Url(decodeBase64Url(value)), process.env.SERVICE_JWT_REFRESH_TOKEN_SECRET as string, (err, payload)=> {
-                        if(err) {
-                            resolve(null);
-                        }
-                        // const userId = (payload as JwtPayload).aud;
-                        return resolve(value); //If token passes verification, sent it back to be used as secret_key for accessToken
-                    })
-                } else {
-                    resolve(null);
-                }
-               
-            })
-        })
-    })
-}
+export const signRefreshToken = async (userId: string) => {
+  return await generateToken(
+    { sub: userId },
+    process.env.SERVICE_JWT_REFRESH_TOKEN_SECRET as string,
+    '1y',
+  );
+};
 
-export const verifyAccessTokenGlobal = (token: string, secretKey: string)=> {
-    return new Promise((resolve, reject)=> {
-        verify(decodeBase64Url(decodeBase64Url(token)), secretKey, (err, payload)=> {
-            if(err) {
-                return resolve(null)
-            }
-            const userId = (payload as JwtPayload).aud;
-            return resolve(userId);
-        })
-    })
-}
+export const verifyAccessToken = async (token: string): Promise<JwtPayload> => {
+  return await verifyToken(
+    token,
+    process.env.SERVICE_JWT_ACCESS_TOKEN_SECRET as string,
+  );
+};
+export const verifyRefreshToken = async (
+  token: string,
+): Promise<JwtPayload> => {
+  return await verifyToken(
+    token,
+    process.env.SERVICE_JWT_REFRESH_TOKEN_SECRET as string,
+  );
+};
 
+export const verifyRefreshTokenGlobal = (userId: string) => {
+  return new Promise((resolve, reject) => {
+    // Check if refresh token exist in redis datastore
+    if (!userId)
+      return reject(
+        new HttpException('Access denied', HttpStatus.UNAUTHORIZED),
+      );
+    redisClient.then((redis) => {
+      redis.GET(userId as any).then((value: any) => {
+        if (!!value) {
+          verify(
+            decodeBase64Url(value),
+            process.env.SERVICE_JWT_REFRESH_TOKEN_SECRET as string,
+            (err, payload) => {
+              if (err) {
+                resolve(null);
+              }
+              // const userId = (payload as JwtPayload).aud;
+              return resolve(value); //If token passes verification, sent it back to be used as secret_key for accessToken
+            },
+          );
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  });
+};
 
-export const verifyAccessToken = (token: string, secretKey: string)=> {
-    return new Promise((resolve, reject)=> {
-        verify(decodeBase64Url(decodeBase64Url(token)), secretKey, (err, payload)=> {
-            if(err) {
-                return reject(new HttpException("Access denied", HttpStatus.UNAUTHORIZED))
-            }
-            const userId = (payload as JwtPayload).aud;
-            return resolve(userId);
-        })
-    })
-}
+export const verifyAccessTokenGlobal = (token: string, secretKey: string) => {
+  return new Promise((resolve, reject) => {
+    verify(decodeBase64Url(token), secretKey, (err, payload) => {
+      if (err) {
+        return resolve(null);
+      }
+      const userId = (payload as JwtPayload).aud;
+      return resolve(userId);
+    });
+  });
+};

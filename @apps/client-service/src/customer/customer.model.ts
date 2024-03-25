@@ -1,29 +1,36 @@
-import { BeforeCreate, BelongsTo, Column, ForeignKey, Model, PrimaryKey, Table } from "sequelize-typescript";
-import { Business } from "../business/business.model";
-import { User } from "../user/user.model";
-import { v4 } from "uuid";
-import { genUUID } from "src/+utils/common";
+import {
+  BeforeCreate,
+  BelongsTo,
+  Column,
+  ForeignKey,
+  Model,
+  PrimaryKey,
+  Table,
+} from 'sequelize-typescript';
+import { Business } from '../business/business.model';
+import { User } from '../user/user.model';
+import { v4 } from 'uuid';
+import { genUUID } from 'src/+utils/common';
 
 @Table
 export class Customer extends Model {
-    
-    @Column({defaultValue: 0, primaryKey: true})
-    id: string;
-    
-    @BeforeCreate
-    static beforeInstanceCreate(customer: any){
-        customer.id = genUUID();
-    }
+  @Column({ defaultValue: v4(), primaryKey: true })
+  id: string;
 
-    @ForeignKey(()=> User)
-    userId: string;
+  // @BeforeCreate
+  // static beforeInstanceCreate(customer: any){
+  //     customer.id = genUUID();
+  // }
 
-    @ForeignKey(()=> Business)
-    businessId: string;
+  @ForeignKey(() => User)
+  userId: string;
 
-    @BelongsTo(()=> User)
-    user: User;
+  @ForeignKey(() => Business)
+  businessId: string;
 
-    @BelongsTo(()=> Business)
-    business: Business
+  @BelongsTo(() => User)
+  user: User;
+
+  @BelongsTo(() => Business)
+  business: Business;
 }

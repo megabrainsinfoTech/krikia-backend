@@ -3,6 +3,7 @@ dotenv.config(); // Load environment variables from .env file
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
+import { HttpExceptionFilter } from './http-exception.filter';
 
 void (async function () {
   const app = await NestFactory.create(AppModule);
@@ -17,5 +18,6 @@ void (async function () {
     maxAge: 3600, // Set the CORS preflight cache duration
   });
   app.use(cookieParser(process.env.COOKIE_SECRET));
+  app.useGlobalFilters(new HttpExceptionFilter());
   await app.listen(process.env.PORT as string);
 })();

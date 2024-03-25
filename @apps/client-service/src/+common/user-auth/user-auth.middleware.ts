@@ -1,30 +1,37 @@
-import { HttpException, HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NestMiddleware,
+} from '@nestjs/common';
 import { decodeBase64Url } from '../../+utils';
 import { verifyAccessToken, verifyRefreshToken } from '../../+utils/jwt_token';
-
+import AppError from 'src/+utils/errorHandle';
+import { Request, Response } from 'express';
 
 @Injectable()
 export class UserAuthMiddleware implements NestMiddleware {
-  async use(req: any, res: any, next: () => void) {
-    if(!req.headers['authorization'] && !req.cookies?.["__ASSEMBLYsxvscz090619_"]) {
-      throw new HttpException("Access denied", HttpStatus.UNAUTHORIZED);
+  async use(req: Request, res: Response, next: () => void) {
+    if (!req.user) {
+      throw new AppError(
+        'You are not logged in, Please login to continue',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
-    const serverToken = req.headers.authorization;
-    const clientToken = `Bearer ${req.cookies?.["__ASSEMBLYsxvscz090619_"]}:${req.cookies?.["__uAud"]}`;
-
-    const authHeader = serverToken || clientToken;
-    const [_, rest] = authHeader.split(" ")
-
-    const [bearerToken, uAud] = rest.split(":");
-    const [uId, uEmail] = decodeBase64Url(uAud).split(",");
-
-    // Get secret key from refresh token
-    const secretKey = await verifyRefreshToken(uId);
-    //Verify accessToken
-    const userId = await verifyAccessToken(bearerToken, secretKey as string);
-    req.user = { id: userId, email: uEmail };
-    // req.user = {id: "Local Module"};
+    // Prompt User to Complete their Profile, Skip Check when they about to update it
+    if (
+      req.user.status === 'Incomplete' &&
+      req.originalUrl.endsWith('/user/profile/complete') === false
+    ) {
+      throw new AppError(
+        'Complete your profile to continue using krikia',
+        HttpStatus.FORBIDDEN,
+        {
+          email: req.user.email,
+        },
+      );
+    }
     return next();
   }
 }

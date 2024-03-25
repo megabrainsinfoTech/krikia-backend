@@ -10,10 +10,16 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginAuthDTO } from './auth.dto';
-import { Response } from 'express';
-import { CreateUserDTO } from '../user/user.dto';
+import { LoginAuthDTO, VerifyEmailToken } from './auth.dto';
+import { Response, Request } from 'express';
+import {
+  CreateNewUserPassword,
+  CreateUserDTO,
+  createEmailDTO,
+} from '../user/user.dto';
 import { CreateBusinessDTO } from '../business/business.dto';
+import { removeOTT } from 'src/+utils/redis_fn';
+import cookiesObjectsKeys from 'src/+utils/helper/cookiesObjectsKeys';
 
 @Controller('auth')
 @UsePipes(
@@ -26,35 +32,63 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
-  async signup(@Body() signupBody: CreateUserDTO) {
+  async signup(@Body() signupBody: createEmailDTO) {
     return await this.authService.signup(signupBody);
   }
 
-  @Get('verify-email/:token')
-  async verifyEmail(@Param('token') token: string) {
-    const email = await this.authService.verifyEmail(token);
-    return { message: `Email ${email} verified successfully` };
+  @Post('verify-email')
+  async verifyEmail(@Body() token: VerifyEmailToken) {
+    const data = await this.authService.verifyEmail(token);
+    return data;
   }
 
   @Post('login')
-  async login(@Body() loginBody: LoginAuthDTO, @Res() res: Response) {
-    const auth = await this.authService.login(loginBody);
-    // Set data on client
-    res.cookie('__uAud', auth.__uAud, {
-      maxAge: 60 * 60 * 1000 * 24 * 7 * 52,
+  async login(
+    @Body() loginBody: LoginAuthDTO,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const userAgent = req.headers['user-agent'] as string;
+
+    const auth = await this.authService.login(loginBody, userAgent);
+
+    // Set AccessToken
+    res.cookie(cookiesObjectsKeys.accessTokenName, auth.accessToken, {
+      maxAge: cookiesObjectsKeys.a_maxAge,
+      domain: cookiesObjectsKeys.domain,
       httpOnly: true,
-    }); //1 yr
-    // accessToken
-    res.cookie('__ASSEMBLYsxvscz090619_', auth.__ASSEMBLYsxvscz090619_, {
-      maxAge: 60 * 60 * 1000 * 24,
+      secure: cookiesObjectsKeys.secure,
+    });
+
+    // Set RefreshToken
+    res.cookie(cookiesObjectsKeys.refreshTokenName, auth.refreshToken, {
+      maxAge: cookiesObjectsKeys.r_maxAge,
+      domain: cookiesObjectsKeys.domain,
       httpOnly: true,
-    }); //1 day
+      secure: cookiesObjectsKeys.secure,
+    });
 
     return res.json({
-      message: 'You are logged in',
-      __auth: auth.__uAud,
-      accessToken: auth.__ASSEMBLYsxvscz090619_,
+      message: 'You are logged in successfully',
     });
+  }
+
+  // Logout Route
+  // @Get()
+
+  @Post('create-password')
+  async createPassWordAndLogin(
+    @Body() CPAL: CreateNewUserPassword,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = await this.authService.createPasswordNewUser(CPAL);
+    // Set accessToken
+    res.cookie(cookiesObjectsKeys.accessTokenName, user.accessToken, {
+      maxAge: cookiesObjectsKeys.a_maxAge,
+      httpOnly: true,
+    });
+    await removeOTT(CPAL.token);
+    return { message: user.message };
   }
 
   @Post('login-or-signup')
@@ -66,24 +100,16 @@ export class AuthController {
     // Check if email already exist in database
     const isUser = await this.authService.getIsUser(loginBody.email);
 
-    if (!isUser) {
-      await this.authService.signup({
-        ...loginBody,
-        confirmPassword: loginBody.password,
-      });
-    }
+    // if (!isUser) {
+    //   await this.authService.signup({
+    //     ...loginBody,
+    //     confirmPassword: loginBody.password,
+    //   });
+    // }
+    const userAgent = req.headers['user-agent'];
 
-    const auth = await this.authService.login(loginBody);
+    const auth = await this.authService.login(loginBody, userAgent as string);
     // Set data on client
-    res.cookie('__uAud', auth.__uAud, {
-      maxAge: 60 * 60 * 1000 * 24 * 7 * 52,
-      httpOnly: true,
-    }); //1 yr
-    // accessToken
-    res.cookie('__ASSEMBLYsxvscz090619_', auth.__ASSEMBLYsxvscz090619_, {
-      maxAge: 60 * 60 * 1000 * 24,
-      httpOnly: true,
-    }); //1 day
 
     // Complete business creation with updates
     const business = await this.authService.createBusinessComplete(
