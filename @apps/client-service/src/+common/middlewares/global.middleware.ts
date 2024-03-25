@@ -12,7 +12,9 @@ import { CookieExpiryTime } from 'src/+utils/helper/cookieTimeObj';
 export class GlobalMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction) {
     const accessToken = req.cookies[cookiesObjectsKeys.accessTokenName];
-    const refreshToken = req.cookies[cookiesObjectsKeys.refreshTokenName];
+    const refreshToken =
+      req.cookies[cookiesObjectsKeys.refreshTokenName] ||
+      req.headers['X-REFRESH-TOKEN'];
     const serverToken = req.headers?.authorization;
 
     if (!serverToken && !accessToken && !refreshToken) {

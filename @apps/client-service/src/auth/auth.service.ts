@@ -38,7 +38,7 @@ export class AuthService {
   async signup(signupBody: createEmailDTO) {
     const doesExist = await this.userService.findByEmail(signupBody.email);
     if (!!doesExist) {
-      throw new HttpException(
+      throw new AppError(
         `Sorry. ${signupBody.email} has already been registered`,
         HttpStatus.CONFLICT,
       );
@@ -50,8 +50,12 @@ export class AuthService {
 
     const temporaryToken = GenerateCryptoHash();
 
-    await storeOTT(signupBody.email, token, 60 * 60 * 24 * 3); //Store One Time Token for 3 days. ms returns milliseconds so divide by 1000 to get seconds
-    await setRedisData(temporaryToken, signupBody.email, 60 * 60 * 24 * 3); // Temp Holder for the email
+    await storeOTT(signupBody.email, token, 60 * 60 * 24 * 3 * 1000); //Store One Time Token for 3 days. ms returns milliseconds so divide by 1000 to get seconds
+    await setRedisData(
+      temporaryToken,
+      signupBody.email,
+      60 * 60 * 24 * 3 * 1000,
+    ); // Temp Holder for the email
     return {
       message: `Account created successfully. Verify your email and login`,
       temporaryToken,
@@ -60,8 +64,7 @@ export class AuthService {
 
   async verifyEmail(token: VerifyEmailToken) {
     const isValidToken = await verifyOTT(token.user_token_id, token.token);
-
-    if (!!isValidToken) {
+    if (!isValidToken) {
       throw new AppError('Invalid Confirmation Code', HttpStatus.UNAUTHORIZED);
     }
 
@@ -171,14 +174,14 @@ export class AuthService {
     const user = await this.userService.findByEmail(loginBody.email);
 
     if (!user) {
-      throw new HttpException(
+      throw new AppError(
         'Sorry, this account does not exist',
         HttpStatus.NOT_FOUND,
       );
     }
 
     if (user.status === 'Pending') {
-      throw new HttpException(
+      throw new AppError(
         'Go to your email to verify new user account',
         HttpStatus.FORBIDDEN,
       );
@@ -187,10 +190,7 @@ export class AuthService {
     // Password
     const isMatch = await user.cmpPassword(loginBody.password);
     if (!isMatch) {
-      throw new HttpException(
-        'Incorrect login credentials',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new AppError('Incorrect login credentials', HttpStatus.BAD_REQUEST);
     }
 
     // Sign refresh token
@@ -223,15 +223,11 @@ export class AuthService {
         return wallet;
       } catch (err) {
         if (err.code === 'ECONNREFUSED')
-          throw new HttpException(
+          throw new AppError(
             "Can't create wallet now. Try again later",
             HttpStatus.SERVICE_UNAVAILABLE,
           );
-        else
-          throw new HttpException(
-            err.message,
-            HttpStatus.INTERNAL_SERVER_ERROR,
-          );
+        else throw new AppError(err.message, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 

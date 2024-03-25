@@ -15,18 +15,22 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { PayForListingDTO, UpdateUserDTO } from './user.dto';
+import {
+  CompleteUserProfileDTO,
+  PayForListingDTO,
+  UpdateUserDTO,
+} from './user.dto';
 import { UpdateNextOfKinDTO } from '../next-of-kin/next-of-kin.dto';
 import { CreateReviewDTO } from '../review/review.dto';
 import { CreateSiteInspectionDTO } from '../site-inspection/site-inspection.dto';
 import { CreateBusinessDTO } from '../business/business.dto';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { CreateWishlistDTO } from '../wishlist/wishlist.dto';
 import { CreateSharedWishlistDTO } from '../shared-wishlist/shared-wishlist.dto';
 import { RemoveKeysInterceptor } from 'src/+common/interceptors/RemoveKeysInterceptor';
 
 @Controller('user')
-// @UseInterceptors(new RemoveKeysInterceptor(['']))
+@UseInterceptors(new RemoveKeysInterceptor(['password']))
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -37,8 +41,8 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  getUserLoggedInStatus() {
-    return true;
+  getUserLoggedInStatus(@Req() req: Request) {
+    return Boolean(req.user);
   }
 
   @Get('profile')
@@ -49,6 +53,11 @@ export class UserController {
   @Patch('profile')
   updateUserProfile(@Body() updateBody: UpdateUserDTO) {
     return this.userService.update(updateBody);
+  }
+
+  @Patch('profile/complete')
+  completeUserProfile(@Body() updateBody: CompleteUserProfileDTO) {
+    return this.userService.completeUserProfile(updateBody);
   }
 
   @Get('contents-stats')

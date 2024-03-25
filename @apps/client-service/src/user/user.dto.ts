@@ -10,6 +10,8 @@ import {
   IsString,
   IsNumber,
   IsPhoneNumber,
+  isString,
+  Validate,
 } from 'class-validator';
 
 export class WithEmail {
@@ -89,28 +91,57 @@ export class PayForListingDTO {
   purchaseId?: string;
 }
 
-export class UpdateUserDTO {
-  @IsOptional()
+export class CompleteUserProfileDTO {
+  @IsNotEmpty({
+    message: 'First Name cannot be blank',
+  })
   @IsString()
   firstName: string;
 
-  @IsOptional() // const createUser = await this.userService.create({
-  //   status: 'Active',
-  //   avatarUrl: `${process.env.CDN_URL}/krikia-assets/default_avatar.png`,
-  // });
+  @IsNotEmpty({ message: 'Email cannot be blank' })
+  @IsString()
+  @IsEmail(undefined, { message: 'Please provide a valid email address' })
+  email: string;
+
+  @IsNotEmpty({
+    message: 'Last Name cannot be blank',
+  })
   @IsString()
   lastName: string;
 
-  @IsNotEmpty()
-  @IsDate()
-  dateOfBirth: Date;
-
-  @IsOptional()
+  @IsNotEmpty({ message: 'Select your Gender' })
   @IsEnum({ Male: 'Male', Female: 'Female' })
   gender: string;
 
-  @IsOptional()
+  @IsPhoneNumber('NG', {
+    message(validationArguments) {
+      return validationArguments.value + ' is a not a Valid Phone Number';
+    },
+  })
   phone: string;
+
+  @IsNotEmpty({ message: 'Please provide your Date of Birth' })
+  @Validate(
+    (obj: any, value: any) => {
+      // Ensure value is a valid Date object
+      return value instanceof Date && !isNaN(value.getTime());
+    },
+    {
+      message: 'Select a valid date of birth',
+    },
+  )
+  dateOfBirth: Date;
+}
+
+export class UpdateUserDTO extends CompleteUserProfileDTO {
+  // const createUser = await this.userService.create({
+  //   status: 'Active',
+  //   avatarUrl: `${process.env.CDN_URL}/krikia-assets/default_avatar.png`,
+  // });
+
+  @IsOptional()
+  @IsString()
+  avatarUrl: string;
 
   @IsOptional()
   stateOfResidence: string;

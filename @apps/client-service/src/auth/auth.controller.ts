@@ -38,7 +38,6 @@ export class AuthController {
 
   @Post('verify-email')
   async verifyEmail(@Body() token: VerifyEmailToken) {
-    console.log(token);
     const data = await this.authService.verifyEmail(token);
     return data;
   }
@@ -73,6 +72,10 @@ export class AuthController {
       message: 'You are logged in successfully',
     });
   }
+
+  // Logout Route
+  // @Get()
+
   @Post('create-password')
   async createPassWordAndLogin(
     @Body() CPAL: CreateNewUserPassword,

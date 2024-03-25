@@ -15,7 +15,6 @@ import { ClsModule } from 'nestjs-cls';
 import { ListingModule } from '../listing/listing.module';
 import { SharedWishlistModule } from '../shared-wishlist/shared-wishlist.module';
 import { ListingPlanOptionModule } from '../listing-plan-option/listing-plan-option.module';
-import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -50,6 +49,6 @@ import { AuthModule } from 'src/auth/auth.module';
 })
 export class UserModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(UserAuthMiddleware).forRoutes('user');
+    consumer.apply(UserAuthMiddleware).exclude('/user').forRoutes('user/*');
   }
 }

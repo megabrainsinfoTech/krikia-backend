@@ -54,14 +54,7 @@ import { GlobalMiddleware } from './+common/middlewares/global.middleware';
     ListingMetaModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    RemoveKeysInterceptorProvider,
-    {
-      provide: APP_INTERCEPTOR,
-      useExisting: RemoveKeysInterceptor,
-    },
-  ],
+  providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

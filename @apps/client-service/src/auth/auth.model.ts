@@ -19,13 +19,12 @@ export class RefreshToken extends Model {
     type: DataType.UUID,
     defaultValue: v4(),
     primaryKey: true,
-    allowNull: false,
   })
   id: string;
 
   @Column({
-    allowNull: false,
     type: DataType.STRING,
+    unique: true,
   })
   token: string;
 

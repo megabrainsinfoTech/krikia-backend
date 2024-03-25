@@ -16,6 +16,7 @@ import { UserBusiness } from '../user-business/user-business.model';
 import { Purchase } from 'src/purchase/purchase.model';
 import { RefreshToken } from 'src/auth/auth.model';
 import { Exclude } from 'class-transformer';
+import { CompleteUserProfileDTO } from './user.dto';
 
 @Table
 export class User extends Model {
@@ -36,7 +37,7 @@ export class User extends Model {
   password: string;
 
   @Column
-  dateOBirth: Date;
+  dateOfBirth: Date;
 
   @Column
   gender: 'Male' | 'Female';
@@ -57,7 +58,7 @@ export class User extends Model {
   fnxAccountAddress: string;
 
   @Column
-  status: UserAccountStatus;
+  public status: UserAccountStatus;
 
   @HasMany(() => Customer)
   customers: Customer[];
@@ -94,5 +95,19 @@ export class User extends Model {
   @BeforeUpdate
   static beforeUserUpdate(user: any) {
     user.id = Object.freeze(user.id);
+  }
+
+  @BeforeUpdate
+  static async verifyUserStatus(user: CompleteUserProfileDTO & User) {
+    const fields =
+      user.email &&
+      user.firstName &&
+      user.gender &&
+      user.phone &&
+      user.lastName &&
+      user.dateOfBirth;
+    if (!fields) {
+      user.status = 'Incomplete';
+    }
   }
 }

@@ -7,6 +7,7 @@ import {
 import { InjectModel } from '@nestjs/sequelize';
 import { User } from './user.model';
 import {
+  CompleteUserProfileDTO,
   CreateNewUserPassword,
   CreateUserDTO,
   PayForListingDTO,
@@ -58,9 +59,21 @@ export class UserService {
       status: 'Incomplete',
     });
   }
-
+  /**
+   * @param {CreateUserDTO} createBody - Creates the Basic profile provide
+   */
   async completeBasicProfileNewUSer(createBody: CreateUserDTO) {
     return await this.user.create({ ...createBody, status: 'Active' });
+  }
+  /**
+   * @param {CompleteUserProfileDTO} updateBody - Contains the required fields to update
+   * @description This method completes the user required provide, to enable them to continue using the app
+   */
+  async completeUserProfile(updateBody: CompleteUserProfileDTO) {
+    await this.user.update(updateBody, {
+      where: { id: this.cls.get('userId') },
+    });
+    return { message: 'Profile completed successfully' };
   }
 
   async findById() {
@@ -228,7 +241,6 @@ export class UserService {
       ).data;
       return wallets;
     } catch (err) {
-      console.log(err);
       throw new HttpException(err.message, err.statusCode);
       // throw err;
     }
